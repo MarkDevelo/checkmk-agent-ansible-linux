@@ -1,13 +1,11 @@
 # Ansible Playbook for Checkmk Agent on Linux
 
-[![Ansible Lint](https://github.com/MarkDevelo/checkmk-agent-ansible-linux/actions/workflows/ansible-lint.yml/badge.svg)](https://github.com/MarkDevelo/checkmk-agent-ansible-linux/actions/workflows/ansible-lint.yml)
-
 A robust Ansible playbook to automate the installation of the Checkmk monitoring agent on **Debian and Ubuntu** servers.
 
-This repository provides two methods for deployment:
+This repository provides two distinct methods for deployment, allowing you to choose the best fit for your workflow.
 
-1.  **Professional Project (main branch):** A secure, scalable structure using Ansible Vault for secrets and an inventory file for managing multiple hosts. **This is the recommended approach.**
-2.  **Interactive Script (interactive-version branch):** A simple, single-file script that prompts for all inputs. Ideal for quick, one-off deployments.
+1.  **Professional Project (main branch):** A secure, scalable structure using Ansible Vault for secrets and an inventory file for managing multiple hosts. **This is the recommended approach for production environments.**
+2.  **Interactive Script (interactive-version branch):** A simple, single-file script that prompts for all inputs. Ideal for quick, one-off deployments or testing.
 
 ---
 
@@ -31,23 +29,33 @@ This method is ideal for managing multiple servers in a repeatable and secure wa
     ```
 
 2.  **Install Dependencies:**
+    This project depends on the `community.general` Ansible collection.
     ```bash
     ansible-galaxy install -r requirements.yml
     ```
 
 3.  **Configure the Agent Version:**
+    This is the most important step for adapting the playbook to your needs.
     -   Place your Checkmk agent `.deb` file into the `files/` directory.
     -   Open `vars/config.yml` and set the `agent_deb_file` variable to match the **exact filename** of your agent.
 
+    ```yaml
+    # Example: vars/config.yml
+    agent_deb_file: "check-mk-agent-2.4.0p1.deb"
+    ```
+
 4.  **Configure Your Target Servers:**
-    -   Open `inventory.ini` and list your server IPs under the `[checkmk_linux_agents]` group.
+    -   Open `inventory.ini` and list your server IPs or hostnames under the `[checkmk_linux_agents]` group.
     -   Update the `ansible_user` variable with a user that has `sudo` access.
 
 5.  **Create Your Encrypted Secrets File:**
-    -   Run `ansible-vault create vars/secrets.yml.vault`. You will be prompted to create a vault password. **Remember this password!**
-    -   Paste the following into the editor, add your real credentials, then save the file:
+    -   Run `ansible-vault create vars/secrets.yml.vault`. You will be prompted to create a vault password. **Remember this vault password!**
+    -   Paste the following into the editor, add your real credentials, then save and close the file:
         ```yaml
+        # Password for the SSH user defined in inventory.ini
         ansible_password: "YourSshPassword"
+
+        # Sudo password for that user
         ansible_become_password: "YourSudoPassword"
         ```
 
@@ -67,19 +75,46 @@ This method is perfect for quickly installing the agent on a single server witho
 
 ### 1. Switch to the Interactive Branch
 
-First, switch to the `interactive-version` branch to access the script.
+To access the script, you must switch to the `interactive-version` branch.
 
 ```bash
+# Fetch the latest branches from the remote repository
+git fetch origin
+
+# Switch to the interactive version branch
 git checkout interactive-version
 ```
 
-### 2. Run the Interactive Playbook
+### 2. Important: Check the Agent Installer Path
 
-Execute the interactive playbook directly. The script will prompt you for all the necessary information (target IP, username, password, and the path to your `.deb` file).
+The interactive script prompts you for the location of your Checkmk `.deb` file. It has a default path set for convenience.
+
+```yaml
+# Snippet from install_checkmk_agent_interactive.yml
+...
+    - name: linux_package
+      prompt: "Path to Linux .deb package on this machine"
+      default: "/home/steve/check-mk-agent.deb" # <-- This default path
+      private: no
+...
+```
+
+**Before running the script, a new user should be aware of two options:**
+
+*   **Option A (Recommended):** Simply run the script. When it prompts you for the path, **manually type the correct, full path** to where your `.deb` file is located on your machine.
+
+*   **Option B (For Convenience):** **Edit the `install_checkmk_agent_interactive.yml` file** and change the `default:` path to a location you use often. This saves you from typing it every time.
+
+### 3. Run the Interactive Playbook
+
+Execute the playbook directly from your terminal. The script will ask for all required information.
 
 ```bash
+# This command assumes you are in the project's root directory
 ansible-playbook install_checkmk_agent_interactive.yml
 ```
+
+The playbook will then connect to the target server and perform the installation.
 
 ---
 
