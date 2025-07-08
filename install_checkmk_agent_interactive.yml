@@ -1,0 +1,76 @@
+---
+# ==============================================================================
+# PLAY 1: GATHER INFORMATION
+# ==============================================================================
+- name: "Phase 1: Gather Target Information"
+  hosts: localhost
+  gather_facts: no
+
+  vars_prompt:
+    - name: target_ip
+      prompt: "Enter target Debian/Ubuntu server IP"
+      private: no
+    - name: target_user
+      prompt: "Enter remote username (with sudo access)"
+      private: no
+    - name: target_password
+      prompt: "Enter remote user's SSH and sudo password"
+      private: yes
+    - name: linux_package
+      prompt: "Path to Linux .deb package on this machine"
+      default: "/home/steve/check-mk-agent.deb" # This default is just a placeholder
+      private: no
+
+  tasks:
+    - name: "SETUP | Add target host to in-memory inventory"
+      ansible.builtin.add_host:
+        name: "{{ target_ip }}"
+        groups: target_servers
+        ansible_user: "{{ target_user }}"
+        ansible_password: "{{ target_password }}"
+        ansible_connection: "ssh"
+        ansible_become: yes
+        ansible_become_password: "{{ target_password }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        linux_package_path: "{{ linux_package }}"
+
+    - name: "SETUP | Confirmation"
+      ansible.builtin.debug:
+        msg: "Host {{ target_ip }} added. Proceeding with installation..."
+
+# ==============================================================================
+# PLAY 2: INSTALL THE AGENT
+# ==============================================================================
+- name: "Phase 2: Install Checkmk Agent"
+  hosts: target_servers
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: "TASK | Copy agent package"
+      ansible.builtin.copy:
+        src: "{{ hostvars[inventory_hostname].linux_package_path }}"
+        dest: /tmp/agent.deb
+        mode: '0644'
+
+    - name: "TASK | Install agent using apt"
+      ansible.builtin.apt:
+        deb: /tmp/agent.deb
+        state: present
+
+    - name: "TASK | Ensure firewall allows Checkmk traffic (Port 6556)"
+      community.general.ufw:
+        rule: allow
+        port: '6556'
+        proto: tcp
+        comment: "Allow Checkmk monitoring agent"
+      ignore_errors: true
+
+    - name: "TASK | Clean up temporary installer file"
+      ansible.builtin.file:
+        path: /tmp/agent.deb
+        state: absent
+
+    - name: "SUCCESS | Installation complete"
+      ansible.builtin.debug:
+        msg: "SUCCESS: The Checkmk agent has been successfully installed on {{ inventory_hostname }}."
