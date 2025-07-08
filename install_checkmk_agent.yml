@@ -1,0 +1,36 @@
+---
+- name: Install Checkmk Agent on Debian/Ubuntu
+  hosts: checkmk_linux_agents
+  gather_facts: yes
+  become: yes
+  collections:
+    - community.general
+
+  tasks:
+    - name: "TASK | Copy agent package to remote host"
+      ansible.builtin.copy:
+        src: "files/{{ agent_deb_file }}"
+        dest: "/tmp/{{ agent_deb_file }}"
+        mode: '0644'
+
+    - name: "TASK | Install agent using apt (handles dependencies)"
+      ansible.builtin.apt:
+        deb: "/tmp/{{ agent_deb_file }}"
+        state: present
+
+    - name: "TASK | Ensure firewall allows Checkmk traffic (Port 6556)"
+      community.general.ufw:
+        rule: allow
+        port: '6556'
+        proto: tcp
+        comment: "Allow Checkmk monitoring agent"
+      ignore_errors: true # Will not fail if UFW is not installed
+
+    - name: "TASK | Clean up temporary installer file"
+      ansible.builtin.file:
+        path: "/tmp/{{ agent_deb_file }}"
+        state: absent
+
+    - name: "SUCCESS | Installation complete"
+      ansible.builtin.debug:
+        msg: "SUCCESS: The Checkmk agent has been successfully installed on {{ inventory_hostname }}."

@@ -1,0 +1,5 @@
+---
+collections:
+  # Provides the 'ufw' module for firewall management.
+  - name: community.general
+    version: ">=6.0.0"

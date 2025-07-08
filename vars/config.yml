@@ -1,0 +1,7 @@
+---
+# Non-sensitive configuration variables for the Checkmk playbook.
+
+# --- IMPORTANT: Define your Checkmk agent version here ---
+# This filename must exactly match the name of the .deb file you
+# placed in the 'files/' directory.
+agent_deb_file: "check-mk-agent-2.3.0p27.deb"
